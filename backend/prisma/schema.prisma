@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// A staff member. biometricId maps to whatever id a future physical
+// fingerprint device would assign. The webauthn* fields are what a
+// phone/laptop's own fingerprint sensor uses today, via the browser.
+model Person {
+  id                    String   @id @default(cuid())
+  fullName              String
+  email                 String?  @unique
+  department            String? // IT Core | Finance | Sales and BDM
+  role                  String   @default("staff") // staff | receptionist | admin
+  biometricId           String?  @unique
+  savedSignatureSvg     String? // uploaded once from their profile, reused on every meeting attendance sheet
+  webauthnCredentialId  String?  @unique
+  webauthnPublicKey     String?
+  webauthnCounter       Int      @default(0)
+  currentChallenge      String? // short-lived, used only during a fingerprint register/sign-in round trip
+  createdAt             DateTime @default(now())
+
+  attendance          AttendanceLog[]
+  meetingAttendance    MeetingAttendee[]
+  facilitatedMeetings  Meeting[]         @relation("Facilitator")
+  leaveRecords         LeaveRecord[]
+}
+
+// The daily door log - separate from meeting attendance on purpose.
+// One row per person per day. "webauthn" = signed in with a phone/laptop
+// fingerprint sensor (today's stand-in), "biometric" = the real door device later.
+model AttendanceLog {
+  id       String    @id @default(cuid())
+  person   Person    @relation(fields: [personId], references: [id])
+  personId String
+  date     DateTime  @default(now()) @db.Date
+  timeIn   DateTime?
+  timeOut  DateTime?
+  source   String    @default("webauthn") // webauthn | biometric
+
+  @@unique([personId, date])
+}
+
+// A person marked on leave or working remotely for a date range -
+// this is what tells the dashboard/export "not absent, just not in the office".
+model LeaveRecord {
+  id        String   @id @default(cuid())
+  person    Person   @relation(fields: [personId], references: [id])
+  personId  String
+  type      String // leave | remote
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model Meeting {
+  id            String    @id @default(cuid())
+  title         String
+  type          String // training | department | general | client | other
+  date          DateTime
+  mode          String    @default("physical") // physical | online
+  location      String?
+  meetingLink   String? // used when mode = online
+  department    String? // null = everyone, otherwise one of the fixed department names
+  code          String    @unique // short code shown on the printed sheet / shared in the invite
+  facilitator   Person?   @relation("Facilitator", fields: [facilitatorId], references: [id])
+  facilitatorId String?
+  createdAt     DateTime  @default(now())
+
+  attendees MeetingAttendee[]
+}
+
+// Created for every expected attendee the moment a meeting is scheduled,
+// so the sheet is print-ready immediately - name and department show up
+// straight away, signedAt/signatureSvg fill in as people actually check in.
+model MeetingAttendee {
+  id            String    @id @default(cuid())
+  meeting       Meeting   @relation(fields: [meetingId], references: [id])
+  meetingId     String
+  person        Person    @relation(fields: [personId], references: [id])
+  personId      String
+  signatureSvg  String?
+  signedAt      DateTime?
+
+  @@unique([meetingId, personId])
+}
