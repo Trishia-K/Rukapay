@@ -1,10 +1,19 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function SignaturePad({ onCapture, onCancel }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const points = useRef([]);
   const [hasDrawn, setHasDrawn] = useState(false);
+
+  // Match the canvas's actual pixel buffer to its real rendered size,
+  // so drawing coordinates line up 1:1 with what the mouse/finger reports.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }, []);
 
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -52,8 +61,6 @@ export default function SignaturePad({ onCapture, onCancel }) {
       <canvas
         ref={canvasRef}
         className="signature-pad"
-        width={400}
-        height={160}
         onMouseDown={start}
         onMouseMove={move}
         onMouseUp={end}

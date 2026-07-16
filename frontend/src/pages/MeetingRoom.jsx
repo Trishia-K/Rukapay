@@ -9,23 +9,37 @@ export default function MeetingRoom() {
   const [meeting, setMeeting] = useState(null);
   const [query, setQuery] = useState('');
   const [signingFor, setSigningFor] = useState(null);
+  const [now, setNow] = useState(new Date());
+  const [signError, setSignError] = useState('');
 
   const load = () => { api.get(`/meetings/${id}`).then(setMeeting); };
   useEffect(load, [id]);
 
+  // Re-checks the clock every 20s so the sign-in list appears automatically
+  // once the meeting's start time arrives, without needing a page refresh.
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 20000);
+    return () => clearInterval(t);
+  }, []);
+
   if (!meeting) return <p>Loading...</p>;
 
-  const isPast = new Date(meeting.date) < new Date();
+  const hasStarted = now >= new Date(meeting.date);
 
   const notSignedYet = meeting.attendees
     .filter((a) => !a.signedAt)
     .filter((a) => a.person.fullName.toLowerCase().includes(query.toLowerCase()));
 
   const confirmSign = async (svg) => {
-    await api.post(`/meetings/${id}/sign`, { personId: signingFor.personId, signatureSvg: svg });
-    setSigningFor(null);
-    setQuery('');
-    load();
+    setSignError('');
+    try {
+      await api.post(`/meetings/${id}/sign`, { personId: signingFor.personId, signatureSvg: svg });
+      setSigningFor(null);
+      setQuery('');
+      load();
+    } catch (err) {
+      setSignError(err.message);
+    }
   };
 
   const signedCount = meeting.attendees.filter((a) => a.signedAt).length;
@@ -41,10 +55,11 @@ export default function MeetingRoom() {
           Code <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{meeting.code}</span>
         </p>
 
-        {isPast ? (
+        {!hasStarted ? (
           <div className="card" style={{ marginBottom: 20, background: 'var(--gray-50)' }}>
             <p style={{ margin: 0, color: 'var(--gray-500)', fontSize: 14 }}>
-              This meeting has already taken place - attendance is closed. You can still print the sheet below.
+              Attendance opens at {new Date(meeting.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -
+              this list will unlock automatically once the meeting starts.
             </p>
           </div>
         ) : (
@@ -80,6 +95,7 @@ export default function MeetingRoom() {
               <div>
                 <p style={{ fontSize: 14 }}>Sign below, {signingFor.person.fullName.split(' ')[0]}:</p>
                 <SignaturePad onCapture={confirmSign} onCancel={() => setSigningFor(null)} />
+                {signError && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{signError}</p>}
               </div>
             )}
           </div>
@@ -106,7 +122,7 @@ export default function MeetingRoom() {
               <tr key={a.id}>
                 <td>{a.person.fullName}</td>
                 <td>{a.person.department || '—'}</td>
-                <td>{a.signatureSvg && <SignaturePreview points={a.signatureSvg} />}</td>
+                <td>{a.signatureSvg ? <SignaturePreview points={a.signatureSvg} /> : '—'}</td>
               </tr>
             ))}
           </tbody>

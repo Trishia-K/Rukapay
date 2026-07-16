@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { startAuthentication } from '@simplewebauthn/browser';
 import { api } from '../api/client';
+import { base64urlToBuffer, bufferToBase64url } from '../lib/webauthn';
 
 const STEPS = { SEARCH: 'search', SCANNING: 'scanning', DONE: 'done', ERROR: 'error' };
 
@@ -36,7 +36,33 @@ export default function SignIn() {
     setError('');
     try {
       const options = await api.post(`/fingerprint/${p.id}/sign-in-options`, {});
-      const assertion = await startAuthentication(options);
+      console.log(JSON.stringify(options.allowCredentials, null, 2));
+
+      const publicKey = {
+        challenge: base64urlToBuffer(options.challenge),
+        timeout: options.timeout,
+        rpId: options.rpId,
+        userVerification: options.userVerification,
+        allowCredentials: [],
+      };
+
+      console.log("Calling get()");
+const credential = await navigator.credentials.get({ publicKey });
+console.log("Returned from get()", credential);
+
+      const assertion = {
+        id: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        type: credential.type,
+        clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
+        response: {
+          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+          authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+          signature: bufferToBase64url(credential.response.signature),
+          userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : undefined,
+        },
+      };
+
       const result = await api.post(`/fingerprint/${p.id}/sign-in-verify`, assertion);
       setResultLabel(result.log.timeOut ? 'Signed out' : 'Signed in');
       setStep(STEPS.DONE);

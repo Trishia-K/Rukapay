@@ -6,6 +6,7 @@ import {
   verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
 import { isoBase64URL } from '@simplewebauthn/server/helpers';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceService } from '../attendance/attendance.service';
 
@@ -83,16 +84,21 @@ export class FingerprintService {
       throw new BadRequestException('No fingerprint registered for this person yet - set it up on the Team page first');
     }
 
-    const options = await generateAuthenticationOptions({
-      rpID: RP_ID,
+    const challenge = isoBase64URL.fromBuffer(crypto.randomBytes(32));
+
+    const finalOptions = {
+      challenge,
+      timeout: 60000,
+      rpId: RP_ID,
       userVerification: 'preferred',
-      allowCredentials: [{ id: isoBase64URL.toBuffer(person.webauthnCredentialId), type: 'public-key' }],
-    }); 
+      allowCredentials: [
+        { id: person.webauthnCredentialId, type: 'public-key' },
+      ],
+    };
 
-    await this.prisma.person.update({ where: { id: personId }, data: { currentChallenge: options.challenge } });
-    return options;
+    await this.prisma.person.update({ where: { id: personId }, data: { currentChallenge: challenge } });
+    return finalOptions;
   }
-
   // Step 2 of signing in - verifies the scan, then logs the actual attendance.
   async signInVerify(personId: string, response: any) {
     const person = await this.prisma.person.findUnique({ where: { id: personId } });
@@ -101,22 +107,25 @@ export class FingerprintService {
     }
 
     const verification = await verifyAuthenticationResponse({
-      response,
-      expectedChallenge: person.currentChallenge,
-      expectedOrigin: ORIGIN,
-      expectedRPID: RP_ID,
-      authenticator: {
-        credentialID: isoBase64URL.toBuffer(person.webauthnCredentialId),
-        credentialPublicKey: isoBase64URL.toBuffer(person.webauthnPublicKey),
-        counter: person.webauthnCounter,
-      },
-    });
+  response,
+  expectedChallenge: person.currentChallenge,
+  expectedOrigin: ORIGIN,
+  expectedRPID: RP_ID,
+  authenticator: {
+    credentialID: isoBase64URL.toBuffer(person.webauthnCredentialId),
+    credentialPublicKey: isoBase64URL.toBuffer(person.webauthnPublicKey),
+
+    // Ignore signature counter for Windows Hello
+    counter: 0,
+  },
+});
 
     if (!verification.verified) throw new BadRequestException('Fingerprint did not match');
 
     await this.prisma.person.update({
       where: { id: personId },
-      data: { webauthnCounter: verification.authenticationInfo.newCounter, currentChallenge: null },
+      data: { webauthnCounter:
+  verification.authenticationInfo.newCounter ?? 0, currentChallenge: null },
     });
 
     const log = await this.attendance.signInOrOut(personId, 'webauthn');

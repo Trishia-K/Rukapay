@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { startRegistration } from '@simplewebauthn/browser';
 import { api } from '../api/client';
+import { base64urlToBuffer, bufferToBase64url } from '../lib/webauthn';
 
 export default function Team() {
   const [people, setPeople] = useState([]);
@@ -34,14 +34,20 @@ export default function Team() {
     });
   }, [people]);
 
+  const [addError, setAddError] = useState('');
+
   const addPerson = async (e) => {
     e.preventDefault();
-    await api.post('/people', newPerson);
-    setNewPerson({ fullName: '', email: '', department: '' });
-    setShowAdd(false);
-    load();
+    setAddError('');
+    try {
+      await api.post('/people', newPerson);
+      setNewPerson({ fullName: '', email: '', department: '' });
+      setShowAdd(false);
+      load();
+    } catch (err) {
+      setAddError(err.message);
+    }
   };
-
   const removePerson = (p) => {
     if (!confirm(`Remove ${p.fullName} from the team? This deletes their attendance history too.`)) return;
     api.delete(`/people/${p.id}`).then(load);
@@ -59,7 +65,36 @@ export default function Team() {
     setFingerprintStatus({ ...fingerprintStatus, [person.id]: 'Follow the prompt on this device...' });
     try {
       const options = await api.post(`/fingerprint/${person.id}/register-options`, {});
-      const attestation = await startRegistration(options);
+
+      const publicKey = {
+        challenge: base64urlToBuffer(options.challenge),
+        rp: options.rp,
+        user: {
+          id: new TextEncoder().encode(options.user.id),
+          name: options.user.name,
+          displayName: options.user.displayName,
+        },
+        pubKeyCredParams: options.pubKeyCredParams,
+        timeout: options.timeout,
+        attestation: options.attestation,
+        authenticatorSelection: options.authenticatorSelection,
+      };
+
+      console.log("Calling create()");
+const credential = await navigator.credentials.create({ publicKey });
+console.log("Returned from create()", credential);
+
+      const attestation = {
+        id: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        type: credential.type,
+        clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
+        response: {
+          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+          attestationObject: bufferToBase64url(credential.response.attestationObject),
+        },
+      };
+
       await api.post(`/fingerprint/${person.id}/register-verify`, attestation);
       setFingerprintStatus({ ...fingerprintStatus, [person.id]: 'Registered ✓' });
       load();
@@ -94,6 +129,7 @@ export default function Team() {
             {departments.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
 
+         {addError && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: -8, marginBottom: 12 }}>{addError}</p>}
           <button className="btn btn-primary" type="submit">Add to team</button>
         </form>
       )}

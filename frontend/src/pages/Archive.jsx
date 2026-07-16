@@ -15,7 +15,7 @@ export default function Archive() {
   return (
     <div>
       <h1 className="page-title">Archive</h1>
-      <p className="page-subtitle">Past meetings and their attendance sheets - read only</p>
+      <p className="page-subtitle">Past meetings and their attendance sheets</p>
 
       <div className="card">
         <table>

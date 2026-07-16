@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  console.log('===== BACKEND STARTING - BUILD CHECK 001 =====');
   const app = await NestFactory.create(AppModule);
   app.enableCors({ origin: (process.env.CORS_ORIGIN || '*').split(',') });
   app.setGlobalPrefix('api');

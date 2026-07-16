@@ -3,6 +3,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { generateMeetingCode, MEETING_TYPES } from './meeting-types';
 
+function startOfDay(d: Date) {
+  const s = new Date(d);
+  s.setHours(0, 0, 0, 0);
+  return s;
+}
+
 @Injectable()
 export class MeetingsService {
   constructor(
@@ -65,26 +71,27 @@ export class MeetingsService {
     return meeting;
   }
 
+  // A meeting stays "upcoming" for its entire scheduled calendar day - it
+  // doesn't disappear the moment its start time passes, since people may
+  // still be signing in. It only becomes "past" starting the next day.
   findMany(filters: { department?: string; date?: string; when?: 'upcoming' | 'past' }) {
     let dateFilter: any;
+    const today = startOfDay(new Date());
+
     if (filters.date) {
       dateFilter = { gte: new Date(`${filters.date}T00:00:00`), lt: new Date(`${filters.date}T23:59:59`) };
     } else if (filters.when === 'past') {
-      dateFilter = { lt: new Date() };
+      dateFilter = { lt: today };
     } else if (filters.when === 'upcoming') {
-      dateFilter = { gte: new Date() };
+      dateFilter = { gte: today };
     }
 
     return this.prisma.meeting.findMany({
-      where: {
-        department: filters.department || undefined,
-        date: dateFilter,
-      },
+      where: { department: filters.department || undefined, date: dateFilter },
       orderBy: { date: filters.when === 'past' ? 'desc' : 'asc' },
       take: 100,
       include: { facilitator: true, attendees: true },
     });
-  
   }
 
   async findByCode(code: string) {
@@ -106,7 +113,16 @@ export class MeetingsService {
     });
   }
 
+  // Attendance can only be signed once the meeting's scheduled time has
+  // actually arrived - this is what stops someone signing in advance
+  // without attending.
   async signAttendance(meetingId: string, personId: string, signatureSvg: string) {
+    const meeting = await this.prisma.meeting.findUnique({ where: { id: meetingId } });
+    if (!meeting) throw new NotFoundException('Meeting not found');
+    if (new Date() < meeting.date) {
+      throw new BadRequestException("Attendance isn't open yet - it unlocks at the meeting's scheduled start time.");
+    }
+
     const person = await this.prisma.person.findUnique({ where: { id: personId } });
     if (!person) throw new NotFoundException('Person not found');
 
@@ -115,6 +131,5 @@ export class MeetingsService {
       update: { signatureSvg, signedAt: new Date() },
       create: { meetingId, personId, signatureSvg, signedAt: new Date() },
     });
-  
   }
 }
