@@ -28,7 +28,7 @@ export default function Archive() {
                 <td><strong>{m.title}</strong></td>
                 <td><span className={`badge badge-${m.type}`}>{TYPE_LABEL[m.type]}</span></td>
                 <td>{m.department || 'Everyone'}</td>
-                <td>{new Date(m.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                <td>{new Date(m.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Kampala' })}</td>
                 <td>{m.attendees?.filter((a) => a.signedAt).length || 0} of {m.attendees?.length || 0}</td>
                 <td>
                   <button className="btn btn-outline" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => navigate(`/meetings/${m.id}`)}>

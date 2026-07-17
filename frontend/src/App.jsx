@@ -7,7 +7,8 @@ import Archive from './pages/Archive';
 import Team from './pages/Team';
 import Reports from './pages/Reports';
 import SignIn from './pages/SignIn';
-
+import RegisterFingerprint from './pages/RegisterFingerprint';
+import AdminGate from './components/AdminGate';
 function Sidebar() {
   return (
     <aside className="sidebar no-print">
@@ -28,7 +29,24 @@ function Sidebar() {
 
 export default function App() {
   const location = useLocation();
-  const isSignInScreen = location.pathname.startsWith('/sign-in') && location.pathname !== '/sign-in-log';
+ const isSignInScreen = location.pathname.startsWith('/sign-in') && location.pathname !== '/sign-in-log';
+  const isRegisterScreen = location.pathname.startsWith('/register/');
+
+  if (isSignInScreen) {
+    return (
+      <Routes>
+        <Route path="/sign-in" element={<SignIn />} />
+      </Routes>
+    );
+  }
+
+  if (isRegisterScreen) {
+    return (
+      <Routes>
+        <Route path="/register/:personId" element={<RegisterFingerprint />} />
+      </Routes>
+    );
+  }
 
   if (isSignInScreen) {
     return (
@@ -48,7 +66,7 @@ export default function App() {
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/meetings/:id" element={<MeetingRoom />} />
           <Route path="/archive" element={<Archive />} />
-          <Route path="/team" element={<Team />} />
+          <Route path="/team" element={<AdminGate><Team /></AdminGate>} />
           <Route path="/reports" element={<Reports />} />
         </Routes>
       </main>

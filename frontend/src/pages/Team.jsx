@@ -36,11 +36,11 @@ export default function Team() {
 
   const [addError, setAddError] = useState('');
 
-  const addPerson = async (e) => {
+ const addPerson = async (e) => {
     e.preventDefault();
-    setAddError('');
+    
     try {
-      await api.post('/people', newPerson);
+      await api.adminPost('/people', newPerson);
       setNewPerson({ fullName: '', email: '', department: '' });
       setShowAdd(false);
       load();
@@ -48,9 +48,15 @@ export default function Team() {
       setAddError(err.message);
     }
   };
-  const removePerson = (p) => {
+ const removePerson = (p) => {
     if (!confirm(`Remove ${p.fullName} from the team? This deletes their attendance history too.`)) return;
-    api.delete(`/people/${p.id}`).then(load);
+    api.adminDelete(`/people/${p.id}`).then(load);
+  };
+
+  const copyRegistrationLink = (person) => {
+    const link = `${window.location.origin}/register/${person.id}`;
+    navigator.clipboard.writeText(link);
+    setFingerprintStatus({ ...fingerprintStatus, [person.id]: 'Link copied - send it to them' });
   };
 
   const submitLeave = async (e) => {
@@ -61,47 +67,9 @@ export default function Team() {
     loadLeaveToday();
   };
 
-  const registerFingerprint = async (person) => {
-    setFingerprintStatus({ ...fingerprintStatus, [person.id]: 'Follow the prompt on this device...' });
-    try {
-      const options = await api.post(`/fingerprint/${person.id}/register-options`, {});
+  
 
-      const publicKey = {
-        challenge: base64urlToBuffer(options.challenge),
-        rp: options.rp,
-        user: {
-          id: new TextEncoder().encode(options.user.id),
-          name: options.user.name,
-          displayName: options.user.displayName,
-        },
-        pubKeyCredParams: options.pubKeyCredParams,
-        timeout: options.timeout,
-        attestation: options.attestation,
-        authenticatorSelection: options.authenticatorSelection,
-      };
-
-      console.log("Calling create()");
-const credential = await navigator.credentials.create({ publicKey });
-console.log("Returned from create()", credential);
-
-      const attestation = {
-        id: credential.id,
-        rawId: bufferToBase64url(credential.rawId),
-        type: credential.type,
-        clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
-        response: {
-          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-          attestationObject: bufferToBase64url(credential.response.attestationObject),
-        },
-      };
-
-      await api.post(`/fingerprint/${person.id}/register-verify`, attestation);
-      setFingerprintStatus({ ...fingerprintStatus, [person.id]: 'Registered ✓' });
-      load();
-    } catch (err) {
-      setFingerprintStatus({ ...fingerprintStatus, [person.id]: err.message || 'Failed - try again' });
-    }
-  };
+     
 
   return (
     <div>
@@ -156,8 +124,8 @@ console.log("Returned from create()", credential);
                     ? <span style={{ color: 'var(--success)', fontSize: 13 }}>Registered ✓</span>
                     : (
                       <div>
-                        <button className="btn btn-outline" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => registerFingerprint(p)}>
-                          Register fingerprint
+                        <button className="btn btn-outline" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => copyRegistrationLink(p)}>
+                          Copy registration link
                         </button>
                         {fingerprintStatus[p.id] && (
                           <div style={{ fontSize: 12, color: 'var(--gray-500)', marginTop: 4 }}>{fingerprintStatus[p.id]}</div>

@@ -108,25 +108,42 @@ export default function MeetingRoom() {
       </div>
 
       <div className="print-sheet">
-        <h2 style={{ marginBottom: 2 }}>{meeting.title}</h2>
-        <p style={{ color: 'var(--gray-500)', marginTop: 0 }}>
-          {new Date(meeting.date).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })} ·{' '}
-          {meeting.department || 'Everyone'} · {signedCount} of {meeting.attendees.length} signed in
-        </p>
-        <table>
-          <thead>
-            <tr><th>Name</th><th>Department</th><th>Signature</th></tr>
-          </thead>
+        <table style={{ border: '2px solid #1a1a1a' }}>
           <tbody>
-            {meeting.attendees.filter((a) => a.signedAt).map((a) => (
+            <tr>
+              <td colSpan={4} style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', border: '2px solid #1a1a1a', padding: '10px 8px' }}>
+                {meeting.title} - Meeting Attendance
+              </td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, width: 110, border: '1px solid #1a1a1a' }}>Date:</td>
+              <td colSpan={3} style={{ border: '1px solid #1a1a1a' }}>
+                {new Date(meeting.date).toLocaleDateString('en-GB', { dateStyle: 'full', timeZone: 'Africa/Kampala' })}
+              </td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, border: '1px solid #1a1a1a' }}>Facilitator:</td>
+              <td colSpan={3} style={{ border: '1px solid #1a1a1a' }}>{meeting.facilitator?.fullName || '—'}</td>
+            </tr>
+            <tr>
+              <th style={{ width: 40, border: '1px solid #1a1a1a' }}>No.</th>
+              <th style={{ border: '1px solid #1a1a1a' }}>Full Name</th>
+              <th style={{ border: '1px solid #1a1a1a' }}>Department</th>
+              <th style={{ width: 140, border: '1px solid #1a1a1a' }}>Signature</th>
+            </tr>
+            {meeting.attendees.filter((a) => a.signedAt).map((a, i) => (
               <tr key={a.id}>
-                <td>{a.person.fullName}</td>
-                <td>{a.person.department || '—'}</td>
-                <td>{a.signatureSvg ? <SignaturePreview points={a.signatureSvg} /> : '—'}</td>
+                <td style={{ textAlign: 'center', border: '1px solid #1a1a1a' }}>{i + 1}</td>
+                <td style={{ border: '1px solid #1a1a1a' }}>{a.person.fullName}</td>
+                <td style={{ border: '1px solid #1a1a1a' }}>{a.person.department || '—'}</td>
+                <td style={{ border: '1px solid #1a1a1a' }}>{a.signatureSvg ? <SignaturePreview points={a.signatureSvg} /> : ''}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        <p style={{ fontSize: 11, color: 'var(--gray-500)', marginTop: 8 }}>
+          {signedCount} of {meeting.attendees.length} expected attendees signed in.
+        </p>
       </div>
     </div>
   );

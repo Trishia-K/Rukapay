@@ -7,11 +7,12 @@ const TYPE_LABEL = { training: 'Training', department: 'Department Meeting', gen
 export default function Meetings() {
   const [meetings, setMeetings] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [showForm, setShowForm] = useState(false);
+ const [showForm, setShowForm] = useState(false);
   const [filters, setFilters] = useState({ department: '', date: '' });
   const [formError, setFormError] = useState('');
+  const [people, setPeople] = useState([]);
   const [form, setForm] = useState({
-    title: '', type: 'department', date: '', mode: 'physical', location: '', meetingLink: '', department: '',
+    title: '', type: 'department', date: '', mode: 'physical', location: '', meetingLink: '', department: '', facilitatorId: '',
   });
   const navigate = useNavigate();
 
@@ -24,11 +25,13 @@ export default function Meetings() {
   };
   useEffect(load, [filters]);
   useEffect(() => { api.get('/people/departments').then(setDepartments); }, []);
+  useEffect(() => { api.get('/people').then(setPeople); }, []);
 
   const submit = async (e) => {
     e.preventDefault();
     setFormError('');
     try {
+      const payload = { ...form, date: `${form.date}:00+03:00` };
       const meeting = await api.post('/meetings', form);
       navigate(`/meetings/${meeting.id}`);
     } catch (err) {
@@ -58,6 +61,12 @@ export default function Meetings() {
             {Object.entries(TYPE_LABEL).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
+          </select>
+
+          <label className="field-label">Facilitator</label>
+          <select className="field-select" value={form.facilitatorId} onChange={(e) => setForm({ ...form, facilitatorId: e.target.value })}>
+            <option value="">Not set</option>
+            {people.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}
           </select>
 
           <label className="field-label">Who is this for?</label>
@@ -117,7 +126,7 @@ export default function Meetings() {
                 <td><strong>{m.title}</strong></td>
                 <td><span className={`badge badge-${m.type}`}>{TYPE_LABEL[m.type]}</span></td>
                 <td>{m.department || 'Everyone'}</td>
-                <td>{new Date(m.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                <td>{new Date(m.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Kampala' })}</td>
                 <td style={{ textTransform: 'capitalize' }}>{m.mode}</td>
                 <td>{m.attendees?.length || 0}</td>
                 <td>

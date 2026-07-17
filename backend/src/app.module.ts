@@ -6,6 +6,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { LeaveModule } from './leave/leave.module';
 import { FingerprintModule } from './fingerprint/fingerprint.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { FingerprintModule } from './fingerprint/fingerprint.module';
     MeetingsModule,
     LeaveModule,
     FingerprintModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

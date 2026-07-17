@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -37,5 +37,10 @@ export class PeopleService {
     await this.prisma.leaveRecord.deleteMany({ where: { personId: id } });
     await this.prisma.meeting.updateMany({ where: { facilitatorId: id }, data: { facilitatorId: null } });
     return this.prisma.person.delete({ where: { id } });
+  }
+async findBasic(id: string) {
+    const person = await this.prisma.person.findUnique({ where: { id }, select: { id: true, fullName: true } });
+    if (!person) throw new NotFoundException('Person not found');
+    return person;
   }
 }
