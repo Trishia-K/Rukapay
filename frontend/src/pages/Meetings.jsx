@@ -28,16 +28,22 @@ export default function Meetings() {
   useEffect(() => { api.get('/people').then(setPeople); }, []);
 
   const submit = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    try {
-      const payload = { ...form, date: `${form.date}:00+03:00` };
-      const meeting = await api.post('/meetings', form);
-      navigate(`/meetings/${meeting.id}`);
-    } catch (err) {
-      setFormError(err.message);
-    }
-  };
+  e.preventDefault();
+  setFormError('');
+
+  try {
+    const payload = {
+      ...form,
+      date: `${form.date}:00+03:00`,
+    };
+
+    const meeting = await api.post('/meetings', payload);
+
+    navigate(`/meetings/${meeting.id}`);
+  } catch (err) {
+    setFormError(err.message);
+  }
+};
 
   return (
     <div>
