@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { startAuthentication } from '@simplewebauthn/browser';
 import { api } from '../api/client';
 import { base64urlToBuffer, bufferToBase64url } from '../lib/webauthn';
-
-const STEPS = { SEARCH: 'search', PIN: 'pin', SCANNING: 'scanning', DONE: 'done', ERROR: 'error' };
-
+const STEPS = { SEARCH: 'search', SCANNING: 'scanning', DONE: 'done', ERROR: 'error' };
 
 export default function SignIn() {
+  const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
   const [step, setStep] = useState(STEPS.SEARCH);
   const [query, setQuery] = useState('');
@@ -37,37 +37,13 @@ export default function SignIn() {
     setError('');
     try {
       const options = await api.post(`/fingerprint/${p.id}/sign-in-options`, {});
-      console.log(JSON.stringify(options.allowCredentials, null, 2));
-
-      const publicKey = {
-        challenge: base64urlToBuffer(options.challenge),
-        timeout: options.timeout,
-        rpId: options.rpId,
-        userVerification: options.userVerification,
-        allowCredentials: [],
-      };
-
-      console.log("Calling get()");
-const credential = await navigator.credentials.get({ publicKey });
-console.log("Returned from get()", credential);
-
-      const assertion = {
-        id: credential.id,
-        rawId: bufferToBase64url(credential.rawId),
-        type: credential.type,
-        clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
-        response: {
-          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-          authenticatorData: bufferToBase64url(credential.response.authenticatorData),
-          signature: bufferToBase64url(credential.response.signature),
-          userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : undefined,
-        },
-      };
-
+      const assertion = await startAuthentication(options);
       const result = await api.post(`/fingerprint/${p.id}/sign-in-verify`, assertion);
       setResultLabel(result.log.timeOut ? 'Signed out' : 'Signed in');
       setStep(STEPS.DONE);
-      setTimeout(reset, 2800);
+      // Auto-navigate to the log after a short pause so the confirmation is
+      // still visible, then it's easy to see the entry landed correctly.
+      setTimeout(() => navigate('/sign-in-log'), 1800);
     } catch (err) {
       setError(err.message || 'Fingerprint scan failed - try again');
       setStep(STEPS.ERROR);
@@ -128,7 +104,7 @@ console.log("Returned from get()", credential);
             <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900)' }}>
               {resultLabel}, {person.fullName.split(' ')[0]}
             </p>
-            <p style={{ color: 'var(--gray-500)', fontSize: 13 }}>Have a great day</p>
+            <p style={{ color: 'var(--gray-500)', fontSize: 13 }}>Taking you to the log...</p>
           </>
         )}
 
