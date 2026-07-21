@@ -15,8 +15,7 @@ export default function MeetingRoom() {
   const load = () => { api.get(`/meetings/${id}`).then(setMeeting); };
   useEffect(load, [id]);
 
-  // Re-checks the clock every 20s so the sign-in list appears automatically
-  // once the meeting's start time arrives, without needing a page refresh.
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 20000);
     return () => clearInterval(t);
@@ -103,7 +102,7 @@ export default function MeetingRoom() {
 
         <button className="btn btn-gold" onClick={() => window.print()}>Print attendance sheet</button>
         <p style={{ fontSize: 12, color: 'var(--gray-500)', marginTop: 8 }}>
-          In the print dialog, choose "Save as PDF" as the destination to get a PDF file instead of a physical printout.
+          In the print dialog, choose "Save as PDF".
         </p>
       </div>
 
@@ -142,7 +141,7 @@ export default function MeetingRoom() {
           </tbody>
         </table>
         <p style={{ fontSize: 11, color: 'var(--gray-500)', marginTop: 8 }}>
-          {signedCount} of {meeting.attendees.length} expected attendees signed in.
+          
         </p>
       </div>
     </div>

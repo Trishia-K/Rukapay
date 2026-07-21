@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { base64urlToBuffer, bufferToBase64url } from '../lib/webauthn';
 
-const STEPS = { SEARCH: 'search', SCANNING: 'scanning', DONE: 'done', ERROR: 'error' };
+const STEPS = { SEARCH: 'search', PIN: 'pin', SCANNING: 'scanning', DONE: 'done', ERROR: 'error' };
+
 
 export default function SignIn() {
   const [now, setNow] = useState(new Date());

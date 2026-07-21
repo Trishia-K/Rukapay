@@ -11,7 +11,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     api.get('/attendance/today').then(setTodayLog).catch(() => {});
-    api.get('/meetings').then(setMeetings).catch(() => {});
+    api.get('/meetings?when=upcoming').then(setMeetings).catch(() => {});
     api.get('/leave/today').then(setOnLeave).catch(() => {});
   }, []);
 
